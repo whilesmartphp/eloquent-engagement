@@ -5,8 +5,10 @@ namespace Whilesmart\Engagement;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\Model;
+use Whilesmart\Engagement\Contracts\ClientScopedMetricProvider;
 use Whilesmart\Engagement\Contracts\MetricProvider;
 use Whilesmart\Engagement\Models\EngagementEvent;
+use Whilesmart\Engagement\Support\ClientRegistry;
 use Whilesmart\Engagement\Support\Period;
 
 class EngagementManager
@@ -60,7 +62,7 @@ class EngagementManager
     /**
      * Build the full report: every provider's metrics for the period, grouped.
      *
-     * @return array{period: array{start: string, end: string, granularity: string}, groups: array<int, array{key: string, label: string, metrics: array}>}
+     * @return array{clients: array<int, array{key: string, name: string}>, selected_client: string|null, period: array{start: string, end: string, granularity: string}, groups: array<int, array{key: string, label: string, client_scoped: bool, metrics: array}>}
      */
     public function report(Period $period): array
     {
@@ -70,6 +72,7 @@ class EngagementManager
             $groups[] = [
                 'key' => $provider->key(),
                 'label' => $provider->label(),
+                'client_scoped' => $provider instanceof ClientScopedMetricProvider,
                 'metrics' => array_map(
                     fn ($metric) => $metric->toArray(),
                     $provider->metrics($period)
@@ -78,6 +81,8 @@ class EngagementManager
         }
 
         return [
+            'clients' => $this->container->make(ClientRegistry::class)->publicClients(),
+            'selected_client' => $period->clientKey,
             'period' => [
                 'start' => $period->start->toIso8601String(),
                 'end' => $period->end->toIso8601String(),
