@@ -32,6 +32,19 @@ abstract class TestCase extends BaseTestCase
 
     protected function getEnvironmentSetUp($app): void
     {
+        $app['config']->set('cache.default', 'array');
         $app['config']->set('engagement.route_middleware', ['api']);
+        $app['config']->set('engagement.clients', [
+            'dashboard' => [
+                'name' => 'Dashboard',
+                'site_key' => 'dashboard-key',
+                'allowed_origins' => ['https://dashboard.example.com'],
+            ],
+            'website' => [
+                'name' => 'Website',
+                'site_key' => 'website-key',
+                'allowed_origins' => ['https://www.example.com'],
+            ],
+        ]);
     }
 }

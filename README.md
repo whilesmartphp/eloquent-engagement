@@ -106,13 +106,40 @@ Engagement metrics are app-wide, so secure it for admins. Set the middleware in 
 
 Set `'register_routes' => false` to mount your own route instead.
 
+## Browser events
+
+The browser endpoint accepts batches from `@whilesmart/engagement`:
+
+```
+POST {prefix}/engagement/events
+```
+
+Configure named clients with their public site identifiers and exact browser origins:
+
+```php
+'clients' => [
+    'dashboard' => [
+        'name' => 'Dashboard',
+        'site_key' => env('ENGAGEMENT_DASHBOARD_SITE_KEY', ''),
+        'allowed_origins' => ['https://app.example.com'],
+    ],
+    'website' => [
+        'name' => 'Website',
+        'site_key' => env('ENGAGEMENT_WEBSITE_SITE_KEY', ''),
+        'allowed_origins' => ['https://www.example.com'],
+    ],
+],
+```
+
+Each site key identifies one client and is safe to expose in browser code. Origin validation and rate limiting protect the endpoint. Browser events capture UTM attribution and common advertising click identifiers. Reports accept `?client=website`, while an omitted client combines all clients. Set `ENGAGEMENT_REGISTER_INGEST_ROUTE=false` when browser collection is not required.
+
 ## Built-in provider
 
-`EventMetricProvider` reports total events, distinct active subjects, an active-subjects series, and the top event names from whatever you recorded.
+`EventMetricProvider` reports total events, distinct active subjects, an active-subjects series, and the top event names from whatever you recorded. `VisitorMetricProvider` reports unique visitors, sessions, page views, visitor trends, sources, and pages from browser events.
 
 ## Configuration
 
-`register_routes`, `route_prefix`, `route_middleware`, `events_table`, and `providers` are all configurable in `config/engagement.php`.
+Report and ingestion routes, their middleware, the route prefix, site identity, allowed origins, batch size, events table, and metric providers are configurable in `config/engagement.php`.
 
 ## License
 

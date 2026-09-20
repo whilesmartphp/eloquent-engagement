@@ -16,17 +16,21 @@ class Period
 
     public readonly CarbonImmutable $end;
 
-    public function __construct(CarbonInterface $start, CarbonInterface $end, public readonly string $granularity = 'day')
-    {
+    public function __construct(
+        CarbonInterface $start,
+        CarbonInterface $end,
+        public readonly string $granularity = 'day',
+        public readonly ?string $clientKey = null,
+    ) {
         $this->start = CarbonImmutable::instance($start)->startOfDay();
         $this->end = CarbonImmutable::instance($end)->endOfDay();
     }
 
-    public static function lastDays(int $days, string $granularity = 'day'): self
+    public static function lastDays(int $days, string $granularity = 'day', ?string $clientKey = null): self
     {
         $end = CarbonImmutable::now();
 
-        return new self($end->subDays(max(0, $days - 1)), $end, $granularity);
+        return new self($end->subDays(max(0, $days - 1)), $end, $granularity, $clientKey);
     }
 
     /**
