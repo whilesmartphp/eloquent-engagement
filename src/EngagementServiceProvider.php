@@ -34,10 +34,16 @@ class EngagementServiceProvider extends ServiceProvider
             __DIR__.'/../database/migrations' => database_path('migrations'),
         ], 'engagement-migrations');
 
-        if (config('engagement.register_routes', true)) {
+        if (config('engagement.register_report_route', config('engagement.register_routes', true))) {
             Route::middleware(config('engagement.route_middleware', ['api', 'auth:sanctum']))
                 ->prefix(config('engagement.route_prefix', 'api'))
-                ->group(__DIR__.'/../routes/api.php');
+                ->group(__DIR__.'/../routes/report.php');
+        }
+
+        if (config('engagement.register_ingest_route', true)) {
+            Route::middleware(config('engagement.ingest_route_middleware', ['api', 'throttle:60,1']))
+                ->prefix(config('engagement.route_prefix', 'api'))
+                ->group(__DIR__.'/../routes/ingest.php');
         }
     }
 }
