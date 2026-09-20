@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0
+## [1.0.0] - 2026-09-20
 
 - Initial release.
 - Event recording via the `Engagement` facade and the `RecordsEngagement` subject trait.
