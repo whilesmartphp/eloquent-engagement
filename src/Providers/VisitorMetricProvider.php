@@ -3,6 +3,7 @@
 namespace Whilesmart\Engagement\Providers;
 
 use Whilesmart\Engagement\Contracts\ClientScopedMetricProvider;
+use Whilesmart\Engagement\Http\Controllers\IdentifyVisitorController;
 use Whilesmart\Engagement\Models\EngagementEvent;
 use Whilesmart\Engagement\Support\Metric;
 use Whilesmart\Engagement\Support\Period;
@@ -23,6 +24,7 @@ class VisitorMetricProvider implements ClientScopedMetricProvider
     {
         $events = EngagementEvent::query()
             ->whereNotNull('visitor_id')
+            ->where('name', '!=', IdentifyVisitorController::EVENT)
             ->when($period->clientKey, fn ($query, string $clientKey) => $query->where('client_key', $clientKey))
             ->whereBetween('occurred_at', [$period->start, $period->end])
             ->get(['visitor_id', 'session_id', 'name', 'source', 'utm_medium', 'utm_campaign', 'page_url', 'occurred_at', 'subject_id']);

@@ -71,6 +71,18 @@ class IdentifyVisitorTest extends TestCase
         $this->assertSame([['label' => 'newsletter', 'value' => 1]], $metrics['identified_by_source']['rows']);
     }
 
+    public function test_linking_an_id_that_never_visited_adds_no_visitor(): void
+    {
+        $member = Member::create(['name' => 'Ada']);
+        $this->postJson('/api/engagement/identify', ['visitor_id' => 'made-up'], ['X-Member' => $member->id])->assertOk();
+
+        $visitors = collect($this->getJson('/api/engagement/report?days=1')->assertOk()->json('data.groups'))->firstWhere('key', 'visitors');
+        $metrics = collect($visitors['metrics'])->keyBy('key');
+        $this->assertSame(0, $metrics['unique_visitors']['value']);
+        $this->assertSame(0, $metrics['identified_visitors']['value']);
+        $this->assertSame([], $metrics['identified_by_source']['rows']);
+    }
+
     public function test_linking_needs_a_signed_in_subject_and_a_visitor(): void
     {
         $this->postJson('/api/engagement/identify', ['visitor_id' => 'visitor-1'])->assertUnauthorized();
