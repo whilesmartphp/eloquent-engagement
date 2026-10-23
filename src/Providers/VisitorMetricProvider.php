@@ -3,6 +3,7 @@
 namespace Whilesmart\Engagement\Providers;
 
 use Whilesmart\Engagement\Contracts\ClientScopedMetricProvider;
+use Whilesmart\Engagement\Http\Controllers\IdentifyVisitorController;
 use Whilesmart\Engagement\Models\EngagementEvent;
 use Whilesmart\Engagement\Support\Metric;
 use Whilesmart\Engagement\Support\Period;
@@ -23,9 +24,10 @@ class VisitorMetricProvider implements ClientScopedMetricProvider
     {
         $events = EngagementEvent::query()
             ->whereNotNull('visitor_id')
+            ->where('name', '!=', IdentifyVisitorController::EVENT)
             ->when($period->clientKey, fn ($query, string $clientKey) => $query->where('client_key', $clientKey))
             ->whereBetween('occurred_at', [$period->start, $period->end])
-            ->get(['visitor_id', 'session_id', 'name', 'source', 'utm_medium', 'utm_campaign', 'page_url', 'occurred_at']);
+            ->get(['visitor_id', 'session_id', 'name', 'source', 'utm_medium', 'utm_campaign', 'page_url', 'occurred_at', 'subject_id']);
 
         $format = $period->bucketFormat();
         $visitorsByBucket = [];
@@ -38,6 +40,8 @@ class VisitorMetricProvider implements ClientScopedMetricProvider
             'value' => count($visitorsByBucket[$bucket->format($format)] ?? []),
         ], $period->buckets());
 
+        $identified = $events->groupBy('visitor_id')->filter(fn ($visits) => $visits->contains(fn ($event) => $event->subject_id !== null));
+
         return [
             Metric::count('unique_visitors', 'Unique visitors', $events->pluck('visitor_id')->unique()->count()),
             Metric::count('sessions', 'Sessions', $events->pluck('session_id')->filter()->unique()->count()),
@@ -47,7 +51,28 @@ class VisitorMetricProvider implements ClientScopedMetricProvider
             Metric::ranking('top_campaigns', 'Top campaigns', $this->ranking($events->pluck('utm_campaign')->filter()->all())),
             Metric::ranking('top_mediums', 'Top media', $this->ranking($events->pluck('utm_medium')->filter()->all())),
             Metric::ranking('top_pages', 'Top pages', $this->ranking($events->where('name', 'page.view')->pluck('page_url')->filter()->all())),
+            Metric::count('identified_visitors', 'Visitors who signed in', $identified->count()),
+            Metric::ranking('identified_by_source', 'Sign-ins by first source', $this->ranking($this->firstSources($identified->keys()->all()))),
         ];
+    }
+
+    /**
+     * Where each visitor first arrived from, read across all time rather than the period, so a
+     * visitor who came from a campaign before the period still counts for that campaign.
+     *
+     * @param  array<int, string>  $visitorIds
+     * @return array<int, string>
+     */
+    private function firstSources(array $visitorIds): array
+    {
+        if ($visitorIds === []) {
+            return [];
+        }
+        $first = EngagementEvent::query()->whereIn('visitor_id', $visitorIds)->whereNotNull('source')
+            ->groupBy('visitor_id')->selectRaw('min(id) as id');
+
+        return EngagementEvent::query()->whereIn('id', $first)->pluck('source', 'visitor_id')->all()
+            + array_fill_keys($visitorIds, 'direct');
     }
 
     private function ranking(array $values): array

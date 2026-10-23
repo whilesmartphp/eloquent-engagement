@@ -40,6 +40,12 @@ class EngagementServiceProvider extends ServiceProvider
                 ->group(__DIR__.'/../routes/report.php');
         }
 
+        if (config('engagement.register_identify_route', config('engagement.register_routes', true))) {
+            Route::middleware(config('engagement.identify_route_middleware', ['api', 'auth:sanctum', 'throttle:30,1']))
+                ->prefix(config('engagement.route_prefix', 'api'))
+                ->group(__DIR__.'/../routes/identify.php');
+        }
+
         if (config('engagement.register_ingest_route', true)) {
             Route::middleware(config('engagement.ingest_route_middleware', ['api', 'throttle:60,1']))
                 ->prefix(config('engagement.route_prefix', 'api'))
