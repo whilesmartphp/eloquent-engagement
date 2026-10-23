@@ -12,7 +12,11 @@ class StoreBrowserEventsController extends Controller
 {
     public function __invoke(StoreBrowserEventsRequest $request): JsonResponse
     {
-        $events = collect($request->validated('events'))->map(fn (array $event) => [
+        $batch = collect($request->validated('events'));
+        $subjects = $this->linkedSubjects($batch->pluck('visitor_id')->unique()->values()->all());
+        $events = $batch->map(fn (array $event) => [
+            'subject_type' => $subjects[$event['visitor_id']]->subject_type ?? null,
+            'subject_id' => $subjects[$event['visitor_id']]->subject_id ?? null,
             'name' => $event['name'],
             'client_key' => $request->clientKey(),
             'visitor_id' => $event['visitor_id'],
@@ -34,5 +38,26 @@ class StoreBrowserEventsController extends Controller
         EngagementEvent::query()->insert($events);
 
         return response()->json(['success' => true, 'data' => ['accepted' => count($events)]], 202);
+    }
+
+    /**
+     * The subject each visitor was most recently linked to.
+     *
+     * @param  array<int, string>  $visitorIds
+     * @return array<string, object>
+     */
+    private function linkedSubjects(array $visitorIds): array
+    {
+        $latest = EngagementEvent::query()
+            ->whereIn('visitor_id', $visitorIds)
+            ->whereNotNull('subject_id')
+            ->groupBy('visitor_id')
+            ->selectRaw('visitor_id, max(id) as id');
+
+        return EngagementEvent::query()
+            ->joinSub($latest, 'latest', fn ($join) => $join->on((new EngagementEvent)->getTable().'.id', '=', 'latest.id'))
+            ->get(['latest.visitor_id', 'subject_type', 'subject_id'])
+            ->keyBy('visitor_id')
+            ->all();
     }
 }

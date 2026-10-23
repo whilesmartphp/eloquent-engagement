@@ -2,7 +2,7 @@
     "name": "whilesmart/eloquent-engagement",
     "description": "Host-agnostic engagement and metrics aggregation for Laravel: record usage events and report app metrics from provider classes the host implements.",
     "type": "library",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "license": "MIT",
     "authors": [
         { "name": "Whilesmart Team" }

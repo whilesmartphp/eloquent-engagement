@@ -133,9 +133,25 @@ Configure named clients with their public site identifiers and exact browser ori
 
 Each site key identifies one client and is safe to expose in browser code. Origin validation and rate limiting protect the endpoint. Browser events capture UTM attribution and common advertising click identifiers. Reports accept `?client=website`, while an omitted client combines all clients. Set `ENGAGEMENT_REGISTER_INGEST_ROUTE=false` when browser collection is not required.
 
+## Linking visitors to accounts
+
+Browser events are anonymous until the visitor signs in. The host then posts the client's
+visitor id to an authenticated route, and the visitor's earlier events, and every event it
+sends afterwards, are attributed to the signed-in user:
+
+```
+POST {prefix}/engagement/identify
+{"visitor_id": "<client.visitorId()>"}
+```
+
+The route uses `identify_route_middleware`, `['api', 'auth:sanctum', 'throttle:30,1']` by
+default, and `ENGAGEMENT_REGISTER_IDENTIFY_ROUTE=false` turns it off. Events another account
+already holds stay with it, so a shared browser keeps what each person did. Linking the same
+visitor to the same account again changes nothing.
+
 ## Built-in provider
 
-`EventMetricProvider` reports total events, distinct active subjects, an active-subjects series, and the top event names from whatever you recorded. `VisitorMetricProvider` reports unique visitors, sessions, page views, visitor trends, sources, and pages from browser events.
+`EventMetricProvider` reports total events, distinct active subjects, an active-subjects series, and the top event names from whatever you recorded. `VisitorMetricProvider` reports unique visitors, sessions, page views, visitor trends, sources, and pages from browser events, plus how many visitors signed in and the source each first arrived from.
 
 ## Configuration
 
