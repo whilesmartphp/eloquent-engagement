@@ -25,7 +25,7 @@ class VisitorMetricProvider implements ClientScopedMetricProvider
             ->whereNotNull('visitor_id')
             ->when($period->clientKey, fn ($query, string $clientKey) => $query->where('client_key', $clientKey))
             ->whereBetween('occurred_at', [$period->start, $period->end])
-            ->get(['visitor_id', 'session_id', 'name', 'source', 'utm_medium', 'utm_campaign', 'page_url', 'occurred_at']);
+            ->get(['visitor_id', 'session_id', 'name', 'source', 'utm_medium', 'utm_campaign', 'page_url', 'occurred_at', 'subject_id']);
 
         $format = $period->bucketFormat();
         $visitorsByBucket = [];
@@ -38,6 +38,8 @@ class VisitorMetricProvider implements ClientScopedMetricProvider
             'value' => count($visitorsByBucket[$bucket->format($format)] ?? []),
         ], $period->buckets());
 
+        $identified = $events->groupBy('visitor_id')->filter(fn ($visits) => $visits->contains(fn ($event) => $event->subject_id !== null));
+
         return [
             Metric::count('unique_visitors', 'Unique visitors', $events->pluck('visitor_id')->unique()->count()),
             Metric::count('sessions', 'Sessions', $events->pluck('session_id')->filter()->unique()->count()),
@@ -47,6 +49,10 @@ class VisitorMetricProvider implements ClientScopedMetricProvider
             Metric::ranking('top_campaigns', 'Top campaigns', $this->ranking($events->pluck('utm_campaign')->filter()->all())),
             Metric::ranking('top_mediums', 'Top media', $this->ranking($events->pluck('utm_medium')->filter()->all())),
             Metric::ranking('top_pages', 'Top pages', $this->ranking($events->where('name', 'page.view')->pluck('page_url')->filter()->all())),
+            Metric::count('identified_visitors', 'Visitors who signed in', $identified->count()),
+            Metric::ranking('identified_by_source', 'Sign-ins by first source', $this->ranking($identified->map(
+                fn ($visits) => $visits->sortBy('occurred_at')->pluck('source')->filter()->first() ?? 'direct',
+            )->values()->all())),
         ];
     }
 

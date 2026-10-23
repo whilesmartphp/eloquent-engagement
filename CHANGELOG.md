@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+- An authenticated identify route links a browser visitor to the signed-in user, attributing its earlier and later events to them. Events another account already holds keep their owner.
+- Visitor measurements add visitors who signed in and sign-ins by first source.
+
 ## [1.0.0] - 2026-09-20
 
 - Initial release.
