@@ -50,10 +50,27 @@ class VisitorMetricProvider implements ClientScopedMetricProvider
             Metric::ranking('top_mediums', 'Top media', $this->ranking($events->pluck('utm_medium')->filter()->all())),
             Metric::ranking('top_pages', 'Top pages', $this->ranking($events->where('name', 'page.view')->pluck('page_url')->filter()->all())),
             Metric::count('identified_visitors', 'Visitors who signed in', $identified->count()),
-            Metric::ranking('identified_by_source', 'Sign-ins by first source', $this->ranking($identified->map(
-                fn ($visits) => $visits->sortBy('occurred_at')->pluck('source')->filter()->first() ?? 'direct',
-            )->values()->all())),
+            Metric::ranking('identified_by_source', 'Sign-ins by first source', $this->ranking($this->firstSources($identified->keys()->all()))),
         ];
+    }
+
+    /**
+     * Where each visitor first arrived from, read across all time rather than the period, so a
+     * visitor who came from a campaign before the period still counts for that campaign.
+     *
+     * @param  array<int, string>  $visitorIds
+     * @return array<int, string>
+     */
+    private function firstSources(array $visitorIds): array
+    {
+        if ($visitorIds === []) {
+            return [];
+        }
+        $first = EngagementEvent::query()->whereIn('visitor_id', $visitorIds)->whereNotNull('source')
+            ->groupBy('visitor_id')->selectRaw('min(id) as id');
+
+        return EngagementEvent::query()->whereIn('id', $first)->pluck('source', 'visitor_id')->all()
+            + array_fill_keys($visitorIds, 'direct');
     }
 
     private function ranking(array $values): array

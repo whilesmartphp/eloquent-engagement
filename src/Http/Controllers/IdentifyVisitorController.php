@@ -35,6 +35,7 @@ class IdentifyVisitorController extends Controller
             'subject_id' => $subject->getKey(),
             'name' => 'visitor.identified',
             'visitor_id' => $visitorId,
+            'client_key' => EngagementEvent::query()->where('visitor_id', $visitorId)->whereNotNull('client_key')->latest('id')->value('client_key'),
             'occurred_at' => now(),
         ]);
 
